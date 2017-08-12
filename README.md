@@ -15,6 +15,6 @@ This issue is overcome by grabbing a users steam ID and prefixing them with a un
 ## License
 This whole project is licensed under the GPLv3.
 
-##Credits
+## Credits
 Neuro_Toxin (Couple of ideas), Thrawn (SMJansson), KyleS (SteamWorks).
 
