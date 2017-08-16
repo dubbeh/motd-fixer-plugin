@@ -15,16 +15,6 @@
 #endif
 #define _motdf_included
 
-public SharedPlugin __pl_motdf =
-{
-    name = "motdf",
-    file = "motdf.smx",
-#if defined REQUIRE_PLUGIN
-    required = 1,
-#else
-    required = 0,
-#endif
-};
 
 /*
  * Show an MOTD Panel in CS:GO for the URL
@@ -39,3 +29,21 @@ public SharedPlugin __pl_motdf =
  *
  */
 native int MOTDF_ShowMOTDPanel (int iClientIndex, const char []szTitle, const char []szURL, bool bHidden = true, int iPanelWidth = 1280, int iPanelHeight = 720);
+
+public SharedPlugin __pl_motdf =
+{
+    name = "motdf",
+    file = "motdf.smx",
+#if defined REQUIRE_PLUGIN
+    required = 1,
+#else
+    required = 0,
+#endif
+};
+
+#if !defined REQUIRE_PLUGIN
+public void __pl_motdfSetNTVOptional()
+{
+	MarkNativeAsOptional("MOTDF_ShowMOTDPanel");
+}
+#endif

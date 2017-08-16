@@ -20,7 +20,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION 		"1.00 BETA 1"
+#define PLUGIN_VERSION 		"1.00 BETA 2"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -81,6 +81,7 @@ public void OnAllPluginsLoaded()
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
+	RegPluginLibrary("motdf");
 	CreateNative("MOTDF_ShowMOTDPanel", Native_MOTDF_ShowMOTDPanel);
 	return APLRes_Success;
 }
