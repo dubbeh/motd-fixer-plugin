@@ -17,6 +17,11 @@
 #include <cstrike>
 #include <SteamWorks>
 #include <smjansson>
+#undef REQUIRE_PLUGIN
+#undef REQUIRE_EXTENSIONS
+#include <updater>
+#define REQUIRE_EXTENSIONS
+#define REQUIRE_PLUGIN
 
 #pragma newdecls required
 
@@ -34,6 +39,7 @@ public Plugin myinfo =
 	url = "https://dubbeh.net"
 };
 
+char g_szUpdateURL[] = "https://update.dubbeh.net/motdf/motdf.txt";
 char g_szRegisterURL[128] = "https://motd.dubbeh.net/register.php";
 char g_szRedirectURL[128] = "https://motd.dubbeh.net/redirect.php";
 char g_szServerToken[64] = "";
@@ -41,6 +47,8 @@ char g_szServerToken[64] = "";
 ConVar g_cVarEnable = null;
 ConVar g_cVarLogging = null;
 ConVar g_cVarValidateType = null;
+
+bool g_bUpdaterAvail = false;
 
 // Thanks to GoD-Tony for this macro
 #define STEAMWORKS_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "SteamWorks_IsLoaded") == FeatureStatus_Available)
@@ -77,6 +85,8 @@ public void OnAllPluginsLoaded()
 	} else if (!SMJANSSON_AVAILABLE()) {
 		SetFailState("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
 	}
+
+	g_bUpdaterAvail = LibraryExists("updater");
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
@@ -89,10 +99,24 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnMapStart()
 {
 	cfg.Load();
+	if (g_bUpdaterAvail)
+		Updater_AddPlugin(g_szUpdateURL);
 }
 
 public void OnConfigsExecuted()
 {
 	// Apply fix for the latest CS:GO Update that broken MOTD functionality
 	ServerCommand("sm_cvar sv_disable_motd 0");
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+	if (StrEqual(name, "updater"))
+		g_bUpdaterAvail = true;
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+	if (StrEqual(name, "updater"))
+		g_bUpdaterAvail = false;
 }
