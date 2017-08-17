@@ -42,7 +42,7 @@ public SharedPlugin __pl_motdf =
 };
 
 #if !defined REQUIRE_PLUGIN
-public void __pl_motdfSetNTVOptional()
+public void __pl_motdf_SetNTVOptional()
 {
 	MarkNativeAsOptional("MOTDF_ShowMOTDPanel");
 }

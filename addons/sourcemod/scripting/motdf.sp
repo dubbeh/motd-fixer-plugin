@@ -25,7 +25,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION 		"1.00 BETA 2"
+#define PLUGIN_VERSION 		"1.00 BETA 3"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -111,7 +111,7 @@ public void OnConfigsExecuted()
 
 public void OnLibraryAdded(const char[] name)
 {
-	if (StrEqual(name, "updater"))
+	if (LibraryExists("updater"))
 		g_bUpdaterAvail = true;
 }
 
