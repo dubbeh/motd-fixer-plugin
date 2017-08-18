@@ -27,47 +27,52 @@ public int Native_MOTDF_ShowMOTDPanel (Handle hPlugin, int iNumParams)
 				// Grab all the parameters
 				int iClientIndex = GetNativeCell(1);
 				int iClientSerial = GetClientSerial(iClientIndex); // Convert client index to serial for thread safe operations
-				GetNativeString(2, szTitle, sizeof(szTitle)); // MOTD panel title - Unused right now but grabbed for the future
+				GetNativeString(2, szTitle, sizeof(szTitle)); // MOTD panel title
 				GetNativeString(3, szURL, sizeof(szURL)); // Grab the URL
-				bool bSilent = GetNativeCell(4); // Silent MOTD loading forced for now but still grab it
+				bool bHidden = GetNativeCell(4); // Is the window hidden
 				int iPanelWidth = GetNativeCell(5); // Get the MOTD panel width
 				int iPanelHeight = GetNativeCell(6); // Get the MOTD panel height
 
 				if (iClientSerial > 0 && szURL[0])
 				{
-					// First send the URL to be registered with the server
-					if (SteamWorks_IsLoaded())
+					// Is SteamWorks available?
+					if (STEAMWORKS_AVAILABLE())
 					{
+						// First send the URL to be registered with the server
 						Format(szRegisterURL, sizeof(szRegisterURL), "%s?client=1", g_szRegisterURL);
 						if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE)
 						{
-							if (!SetRequestData(hHTTPRequest, iClientIndex, iClientSerial, szURL) ||
+							if (!SetClientRequestData(hHTTPRequest, iClientIndex, iClientSerial) ||
+								!SetPanelRequestData(hHTTPRequest, szTitle, szURL, bHidden, iPanelWidth, iPanelHeight) ||
+								!SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) ||
 								!SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnClientURLRegisterComplete) ||
 								!SteamWorks_SendHTTPRequest(hHTTPRequest))
 							{
-								ThrowNativeError(SP_ERROR_NATIVE, "Error setting variables for the HTTP request.");
 								CloseHandle(hHTTPRequest);
+								return ThrowNativeError(SP_ERROR_NATIVE, "Error setting variables for the HTTP request.");
 							}
 						} else {
-							ThrowNativeError(SP_ERROR_NATIVE, "Error creating the SteamWorks HTTP request.");
+							return ThrowNativeError(SP_ERROR_NATIVE, "Error creating the SteamWorks HTTP request.");
 						}
 					} else {
 						ThrowNativeError(SP_ERROR_NATIVE, "SteamWorks doesn't appear to be loaded. Make sure to have it installed first.");
 					}
 				} else {
-					ThrowNativeError(SP_ERROR_NATIVE, "Client serial appears to be 0 or no URL set.");
+					return ThrowNativeError(SP_ERROR_NATIVE, "Client serial appears to be 0 or no URL set.");
 				}
 			} else {
-				ThrowNativeError(SP_ERROR_NATIVE, "No server token set. Make sure to run motdf_register with RCON access first.");
+				return ThrowNativeError(SP_ERROR_NATIVE, "No server token set. Make sure to run motdf_register with RCON access first.");
 			}
 		} else {
-			ThrowNativeError(SP_ERROR_NATIVE, "Invalid number of parameters.");
+			return ThrowNativeError(SP_ERROR_NATIVE, "Invalid number of parameters.");
 		}
 	}
+	
+	return 0;
 }
 
 // Set HTTP Post data - clientip and steamid64
-bool SetRequestData(Handle hHTTPRequest, int iClient, int iClientSerial, char []szClientURL)
+bool SetClientRequestData(Handle hHTTPRequest, int iClient, int iClientSerial)
 {
 	DataPack dpClient = null;
 	char szClientIP[64] = "";
@@ -90,11 +95,25 @@ bool SetRequestData(Handle hHTTPRequest, int iClient, int iClientSerial, char []
 		return SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, dpClient) &&
 			SteamWorks_SetHTTPRequestGetOrPostParameter (hHTTPRequest, "clientip", szClientIP) &&
 			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "steamid64", szClientSteamID64) &&
-			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "url", szClientURL) &&
 			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servertoken", g_szServerToken);
 	}
 
 	return false;
+}
+
+bool SetPanelRequestData (Handle hHTTPRequest, char []szTitle, char []szURL, bool bPanelHidden, int iPanelWidth, int iPanelHeight)
+{
+	char szPanelWidth[8] = "";
+	char szPanelHeight[8] = "";
+	
+	IntToString(iPanelWidth, szPanelWidth, sizeof(szPanelWidth));
+	IntToString(iPanelHeight, szPanelHeight, sizeof(szPanelHeight));
+	
+	return SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_title", szTitle) &&
+		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_url", szURL) &&
+		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_hidden", bPanelHidden ? "1" : "0") &&
+		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_width", szPanelWidth) &&
+		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_height", szPanelHeight);
 }
 
 /*
@@ -120,7 +139,7 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 			if (ReadJSONResponse(szResponseData, szJSONResMsg, sizeof (szJSONResMsg), bIsBlocked))
 			{
 				// URL registered successfully - now we load the normal MOTD panel and let the web server do the rest
-				if (dpClient != INVALID_HANDLE)
+				if (dpClient != INVALID_HANDLE && !bIsBlocked)
 				{
 					ResetPack(dpClient);
 					iClient = GetClientFromSerial(ReadPackCell(dpClient));

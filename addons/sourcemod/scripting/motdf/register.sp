@@ -19,27 +19,30 @@ public Action Command_MOTDRegisterServer(int iClient, int iArgs)
 	{
 		if (g_cVarValidateType.IntValue == VALIDATE_TOKEN)
 		{
-			if (SteamWorks_IsLoaded())
+			if (STEAMWORKS_AVAILABLE())
 			{
 				Format(szRegisterURL, sizeof(szRegisterURL), "%s?server=1", g_szRegisterURL);
 				if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE)
 				{
 					if (SetServerInfoPostData(hHTTPRequest) &&
+						SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) &&
 						SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnRegisterComplete) &&
 						SteamWorks_SendHTTPRequest(hHTTPRequest))
 					{
-						MOTDFLogMessage("Registering server.");
+						MOTDFLogMessage("Command_MOTDRegisterServer () Registering server.");
 					} else {
-						MOTDFLogMessage("Error setting HTTP request data for server registration.");
+						MOTDFLogMessage("Command_MOTDRegisterServer () Error setting HTTP request data for server registration.");
 					}
 				}
 			} else {
-				SetFailState("SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
+				MOTDFLogMessage("Command_MOTDRegisterServer () SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
 			}
 		} else {
 			ReplyToCommand(iClient, "No need to register under IP based validation");
 		}
 	}
+
+	return Plugin_Handled;
 }
 
 public void SteamWorks_OnRegisterComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode)
@@ -53,14 +56,11 @@ public void SteamWorks_OnRegisterComplete(Handle hRequest, bool bFailure, bool b
 	{
 		if (SteamWorks_GetHTTPResponseBodySize(hRequest, iResponseSize) && SteamWorks_GetHTTPResponseBodyData(hRequest, szResponseData, iResponseSize))
 		{
-			MOTDFLogMessage("SteamWorks_OnRegisterComplete() JSON Response: %s", szResponseData);
 			if (ReadJSONResponse(szResponseData, szJSONResMsg, sizeof(szJSONResMsg), bIsBlocked, g_szServerToken, sizeof(g_szServerToken)))
 			{
 				MOTDFLogMessage(szJSONResMsg);
 				if (g_szServerToken[0])
-				{
 					cfg.Save();
-				}
 			} else {
 				MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: %s - IsBlocked: %s", szJSONResMsg, bIsBlocked ? "TRUE" : "FALSE");
 			}

@@ -43,16 +43,20 @@ bool ReadJSONResponse (char []szResponseData, char []szResMessage, int iResMessa
 	Handle hJSON = INVALID_HANDLE;
 	bool bSuccess = false;
 	
-	if ((hJSON = json_load(szResponseData)) != INVALID_HANDLE) {
-		if (iServerTokenSize > 0) {
-			json_object_get_string(hJSON, "token", szServerToken, 64);
+	if (SMJANSSON_AVAILABLE()) {
+		if ((hJSON = json_load(szResponseData)) != INVALID_HANDLE) {
+			if (iServerTokenSize > 0) {
+				json_object_get_string(hJSON, "token", szServerToken, 64);
+			}
+			bIsBlocked = json_object_get_bool(hJSON, "is_blocked");
+			json_object_get_string(hJSON, "msg", szResMessage, iResMessageSize);
+			bSuccess = json_object_get_bool(hJSON, "success");
+			CloseHandle(hJSON);
+		} else {
+			MOTDFLogMessage("Error parsing JSON Response.");
 		}
-		bIsBlocked = json_object_get_bool(hJSON, "is_blocked");
-		json_object_get_string(hJSON, "msg", szResMessage, iResMessageSize);
-		bSuccess = json_object_get_bool(hJSON, "success");
-		CloseHandle(hJSON);
 	} else {
-		MOTDFLogMessage("Error parsing JSON Response.");
+		MOTDFLogMessage("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
 	}
 	
 	return bSuccess;

@@ -25,7 +25,7 @@
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION 		"1.00 BETA 3"
+#define PLUGIN_VERSION 		"1.00 BETA 4"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -66,9 +66,7 @@ MOTDConfig cfg;
 public void OnPluginStart()
 {
 	if (GetEngineVersion() != Engine_CSGO)
-	{
 		SetFailState("This plugin is for CS:GO only. Fixes the MOTD loading.");	
-	}
 	
 	CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
 	g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
@@ -81,9 +79,9 @@ public void OnPluginStart()
 public void OnAllPluginsLoaded()
 {
 	if (!STEAMWORKS_AVAILABLE()) {
-		SetFailState("Unable to find SteamWorks. Please install it from https://forums.alliedmods.net/showthread.php?t=229556");
+		MOTDFLogMessage("Unable to find SteamWorks. Please install it from https://forums.alliedmods.net/showthread.php?t=229556");
 	} else if (!SMJANSSON_AVAILABLE()) {
-		SetFailState("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
+		MOTDFLogMessage("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
 	}
 
 	g_bUpdaterAvail = LibraryExists("updater");

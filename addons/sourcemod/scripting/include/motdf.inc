@@ -22,13 +22,13 @@
  * @param 	iClientIndex = The current server client index to display to
  * @param	szTitle = MOTD panel title
  * @param 	szURL = The URL to display
- * @param	bHidden = Display or Hide the panel (Only hidden works for now)
- * @param	iPanelWidth = MOTD Panel Width (Ignored from the reason above)
- * @param	iPanelHeight = MOTD Panel Height (Ignored from the reason above)
- * @return	False on failure - True on success
+ * @param	bHidden = Display or Hide the panel
+ * @param	iPanelWidth = MOTD Panel Width
+ * @param	iPanelHeight = MOTD Panel Height
+ * @return 	1 on success - 0 on failure
  *
  */
-native int MOTDF_ShowMOTDPanel (int iClientIndex, const char []szTitle, const char []szURL, bool bHidden = true, int iPanelWidth = 1280, int iPanelHeight = 720);
+native int MOTDF_ShowMOTDPanel (int iClientIndex, const char []szTitle, const char []szURL, bool bHidden = true, int iPanelWidth = 960, int iPanelHeight = 720);
 
 public SharedPlugin __pl_motdf =
 {
