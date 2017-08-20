@@ -19,6 +19,8 @@
 /*
  * Show an MOTD Panel in CS:GO for the URL
  *
+ * Make sure the URL starts with http/https to be validated on the web-script
+ *
  * @param 	iClientIndex = The current server client index to display to
  * @param	szTitle = MOTD panel title
  * @param 	szURL = The URL to display
@@ -28,7 +30,7 @@
  * @return 	1 on success - 0 on failure
  *
  */
-native int MOTDF_ShowMOTDPanel (int iClientIndex, const char []szTitle, const char []szURL, bool bHidden = true, int iPanelWidth = 960, int iPanelHeight = 720);
+native int MOTDF_ShowMOTDPanel (int iClientIndex, const char []szTitle, const char []szURL, bool bHidden = false, int iPanelWidth = 1024, int iPanelHeight = 576);
 
 public SharedPlugin __pl_motdf =
 {

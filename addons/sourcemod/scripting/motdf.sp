@@ -23,7 +23,7 @@
 #define REQUIRE_PLUGIN
 
 
-#define PLUGIN_VERSION 		"1.00 BETA 5"
+#define PLUGIN_VERSION 		"1.00 FINAL"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -63,16 +63,18 @@ MOTDConfig g_Config;
 
 public void OnPluginStart()
 {
-	if (GetEngineVersion() != Engine_CSGO) {
+	EngineVersion ev = GetEngineVersion();
+	
+	if (ev == Engine_CSGO) {
+		CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
+		g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
+		g_cVarLogging = CreateConVar("motdf_logging", "1.0", "Enable MOTD Fixer logging", 0, true, 0.0, true, 1.0);
+		g_cVarValidateType = CreateConVar("modtf_validatetype","1.0", "0 = IP | 1 = Token authentication", 0, true, 0.0, true, 1.0);
+
+		RegAdminCmd("motdf_register", Command_MOTDRegisterServer, ADMFLAG_RCON, "Register the current server to use the MOTD redirect service.");
+	} else {
 		SetFailState("This plugin is for CS:GO only. Fixes the MOTD loading.");
 	}
-	
-	CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
-	g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
-	g_cVarLogging = CreateConVar("motdf_logging", "1.0", "Enable MOTD Fixer logging", 0, true, 0.0, true, 1.0);
-	g_cVarValidateType = CreateConVar("modtf_validatetype","1.0", "0 = IP | 1 = Token authentication", 0, true, 0.0, true, 1.0);
-	
-	RegAdminCmd("motdf_register", Command_MOTDRegisterServer, ADMFLAG_RCON, "Register the current server to use the MOTD redirect service.");
 }
 
 public void OnAllPluginsLoaded()
