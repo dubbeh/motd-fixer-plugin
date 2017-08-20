@@ -70,4 +70,4 @@ methodmap MOTDConfig
 		
 		delete kv;
 	}
-}
+};

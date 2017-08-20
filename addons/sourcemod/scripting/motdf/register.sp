@@ -15,15 +15,16 @@ public Action Command_MOTDRegisterServer(int iClient, int iArgs)
 	char szRegisterURL[192] = "";
 	Handle hHTTPRequest = INVALID_HANDLE;
 	
-	if (g_cVarEnable.BoolValue)
-	{
-		if (g_cVarValidateType.IntValue == VALIDATE_TOKEN)
-		{
-			if (STEAMWORKS_AVAILABLE())
-			{
+	if (g_cVarEnable.BoolValue) {
+		
+		if (g_cVarValidateType.IntValue == VALIDATE_TOKEN) {
+			
+			if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded()) {
+				
 				Format(szRegisterURL, sizeof(szRegisterURL), "%s?server=1", g_szRegisterURL);
-				if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE)
-				{
+				
+				if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE) {
+					
 					if (SetServerInfoPostData(hHTTPRequest) &&
 						SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) &&
 						SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnRegisterComplete) &&
@@ -33,6 +34,8 @@ public Action Command_MOTDRegisterServer(int iClient, int iArgs)
 					} else {
 						MOTDFLogMessage("Command_MOTDRegisterServer () Error setting HTTP request data for server registration.");
 					}
+				} else {
+					MOTDFLogMessage("Command_MOTDRegisterServer () Unable to create HTTP request.");
 				}
 			} else {
 				MOTDFLogMessage("Command_MOTDRegisterServer () SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
@@ -59,10 +62,14 @@ public void SteamWorks_OnRegisterComplete(Handle hRequest, bool bFailure, bool b
 			if (ReadJSONResponse(szResponseData, szJSONResMsg, sizeof(szJSONResMsg), bIsBlocked, g_szServerToken, sizeof(g_szServerToken)))
 			{
 				MOTDFLogMessage(szJSONResMsg);
-				if (g_szServerToken[0])
-					cfg.Save();
+				
+				if (g_szServerToken[0]) {
+					g_Config.Save();
+				} else {
+					MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: No server token recieved from the registration request. Maybe the website is down?");
+				}
 			} else {
-				MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: %s - IsBlocked: %s", szJSONResMsg, bIsBlocked ? "TRUE" : "FALSE");
+				MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: %s - Is Server Blocked: %s", szJSONResMsg, bIsBlocked ? "Yes" : "No");
 			}
 		} else {
 			MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error retrieving registration response data.");

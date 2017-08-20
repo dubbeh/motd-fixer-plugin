@@ -36,7 +36,7 @@ public int Native_MOTDF_ShowMOTDPanel (Handle hPlugin, int iNumParams)
 				if (iClientSerial > 0 && szURL[0])
 				{
 					// Is SteamWorks available?
-					if (STEAMWORKS_AVAILABLE())
+					if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded())
 					{
 						// First send the URL to be registered with the server
 						Format(szRegisterURL, sizeof(szRegisterURL), "%s?client=1", g_szRegisterURL);
@@ -55,7 +55,7 @@ public int Native_MOTDF_ShowMOTDPanel (Handle hPlugin, int iNumParams)
 							return ThrowNativeError(SP_ERROR_NATIVE, "Error creating the SteamWorks HTTP request.");
 						}
 					} else {
-						ThrowNativeError(SP_ERROR_NATIVE, "SteamWorks doesn't appear to be loaded. Make sure to have it installed first.");
+						return ThrowNativeError(SP_ERROR_NATIVE, "SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
 					}
 				} else {
 					return ThrowNativeError(SP_ERROR_NATIVE, "Client serial appears to be 0 or no URL set.");

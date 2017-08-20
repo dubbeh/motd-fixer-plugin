@@ -602,7 +602,7 @@ native Handle json_string(const char []sValue);
  * @error                   Invalid JSON String Object.
  * @return                  Length of the returned string or -1 on error.
  */
-native json_string_value(Handle hString, char []sValueBuffer, int maxlength);
+native int json_string_value(Handle hString, char []sValueBuffer, int maxlength);
 
 /**
  * Sets the associated value of JSON String object to value.

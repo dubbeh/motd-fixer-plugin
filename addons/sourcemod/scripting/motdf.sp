@@ -11,24 +11,26 @@
 
 
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
-#include <sdktools>
-#include <cstrike>
-#include <SteamWorks>
-#include <smjansson>
 #undef REQUIRE_PLUGIN
 #undef REQUIRE_EXTENSIONS
+#include <smjansson>
+#include <SteamWorks>
 #include <updater>
 #define REQUIRE_EXTENSIONS
 #define REQUIRE_PLUGIN
 
-#pragma newdecls required
 
-#define PLUGIN_VERSION 		"1.00 BETA 4"
+#define PLUGIN_VERSION 		"1.00 BETA 5"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
+
+// Thanks to GoD-Tony for this macro
+#define STEAMWORKS_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "SteamWorks_IsLoaded") == FeatureStatus_Available)
+#define SMJANSSON_AVAILABLE() (GetFeatureStatus(FeatureType_Native, "json_object") == FeatureStatus_Available)
 
 public Plugin myinfo = 
 {
@@ -50,13 +52,9 @@ ConVar g_cVarValidateType = null;
 
 bool g_bUpdaterAvail = false;
 
-// Thanks to GoD-Tony for this macro
-#define STEAMWORKS_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "SteamWorks_IsLoaded") == FeatureStatus_Available)
-#define SMJANSSON_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "json_object") == FeatureStatus_Available)
-
 #include "motdf/config.sp"
 
-MOTDConfig cfg;
+MOTDConfig g_Config;
 
 #include "motdf/helpers.sp"
 #include "motdf/natives.sp"
@@ -65,8 +63,9 @@ MOTDConfig cfg;
 
 public void OnPluginStart()
 {
-	if (GetEngineVersion() != Engine_CSGO)
-		SetFailState("This plugin is for CS:GO only. Fixes the MOTD loading.");	
+	if (GetEngineVersion() != Engine_CSGO) {
+		SetFailState("This plugin is for CS:GO only. Fixes the MOTD loading.");
+	}
 	
 	CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
 	g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
@@ -80,8 +79,14 @@ public void OnAllPluginsLoaded()
 {
 	if (!STEAMWORKS_AVAILABLE()) {
 		MOTDFLogMessage("Unable to find SteamWorks. Please install it from https://forums.alliedmods.net/showthread.php?t=229556");
-	} else if (!SMJANSSON_AVAILABLE()) {
+	} else {
+		MOTDFLogMessage("Found extension SteamWorks.");
+	}
+
+	if (!SMJANSSON_AVAILABLE()) {
 		MOTDFLogMessage("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
+	} else {
+		MOTDFLogMessage("Found extension SMJansson.");
 	}
 
 	g_bUpdaterAvail = LibraryExists("updater");
@@ -96,7 +101,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnMapStart()
 {
-	cfg.Load();
+	g_Config.Load();
 	if (g_bUpdaterAvail)
 		Updater_AddPlugin(g_szUpdateURL);
 }
