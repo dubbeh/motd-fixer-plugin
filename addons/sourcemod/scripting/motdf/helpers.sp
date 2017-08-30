@@ -87,6 +87,7 @@ bool GetServerName(char []szBuffer, int iBufferSize)
 	if ((cVarHostName = FindConVar("hostname")) != null)
 	{
 		cVarHostName.GetString(szBuffer, iBufferSize);
+		delete cVarHostName;
 		return true;
 	}
 	
@@ -113,8 +114,10 @@ bool GetServerPort (char []szBuffer, int iBufferSize)
 	if ((cVarServerPort = FindConVar("hostport")) != null)
 	{
 		IntToString(cVarServerPort.IntValue, szBuffer, iBufferSize);
+		delete cVarServerPort;
 		return true;
 	}
 	
 	return false;
 }
+

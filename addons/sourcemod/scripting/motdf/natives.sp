@@ -10,7 +10,6 @@
  */
 
 
-//native int MOTDF_ShowMOTDPanel (int iClientIndex, const char []szTitle, const char []szURL, bool bHidden = true, int iPanelWidth = 1280, int iPanelHeight = 720);
 public int Native_MOTDF_ShowMOTDPanel (Handle hPlugin, int iNumParams)
 {
 	Handle hHTTPRequest = null;
@@ -77,8 +76,6 @@ bool SetClientRequestData(Handle hHTTPRequest, int iClient, int iClientSerial)
 	DataPack dpClient = null;
 	char szClientIP[64] = "";
 	char szClientSteamID64[64] = "";
-	int iServerIP[4];
-	char szServerIP[64] = "";
 	
 	if (GetClientIP(iClient, szClientIP, sizeof(szClientIP)) &&
 		GetClientAuthId(iClient, AuthId_SteamID64, szClientSteamID64, sizeof(szClientSteamID64)) &&
@@ -88,9 +85,6 @@ bool SetClientRequestData(Handle hHTTPRequest, int iClient, int iClientSerial)
 		dpClient.WriteCell(iClientSerial);
 		dpClient.WriteString(szClientSteamID64);
 		dpClient.Reset(false);
-		
-		SteamWorks_GetPublicIP(iServerIP);
-		Format(szServerIP, sizeof(szServerIP), "%d.%d.%d.%d", iServerIP[0], iServerIP[1], iServerIP[2], iServerIP[3]);
 		
 		return SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, dpClient) &&
 			SteamWorks_SetHTTPRequestGetOrPostParameter (hHTTPRequest, "clientip", szClientIP) &&
