@@ -31,12 +31,14 @@ methodmap MOTDConfig
 			MOTDFLogMessage("Loading KeyValues from file '%s'.", szLocalPath);
 			kv.GetString("Register URL", g_szRegisterURL, sizeof(g_szRegisterURL), "https://motd.dubbeh.net/register.php");
 			kv.GetString("Redirect URL", g_szRedirectURL, sizeof(g_szRedirectURL), "https://motd.dubbeh.net/redirect.php");
+			kv.GetString("IP Check URL", g_szIPCheckURL, sizeof(g_szIPCheckURL), "https://motd.dubbeh.net/ipcheck.php");
 			kv.GetString("Server Token", g_szServerToken, sizeof(g_szServerToken), "");
 		} else {
 			MOTDFLogMessage("Unable to find '%s'. Creating new file...", szLocalPath);
 			
 			kv.SetString("Register URL", "https://motd.dubbeh.net/register.php");
 			kv.SetString("Redirect URL", "https://motd.dubbeh.net/redirect.php");
+			kv.SetString("IP Check URL", "https://motd.dubbeh.net/ipcheck.php");
 			kv.SetString("Server Token", "");
 			kv.Rewind();
 			
@@ -60,6 +62,7 @@ methodmap MOTDConfig
 		
 		kv.SetString("Register URL", g_szRegisterURL);
 		kv.SetString("Redirect URL", g_szRedirectURL);
+		kv.SetString("IP Check URL", g_szIPCheckURL);
 		kv.SetString("Server Token", g_szServerToken);
 		kv.Rewind();
 		if (!kv.ExportToFile(szLocalPath))

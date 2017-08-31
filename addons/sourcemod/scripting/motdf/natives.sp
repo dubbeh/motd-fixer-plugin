@@ -84,6 +84,7 @@ bool SetClientRequestData(Handle hHTTPRequest, int iClient, int iClientSerial)
 		dpClient = new DataPack();
 		dpClient.WriteCell(iClientSerial);
 		dpClient.WriteString(szClientSteamID64);
+		dpClient.WriteString(szClientIP);
 		dpClient.Reset(false);
 		
 		return SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, dpClient) &&
@@ -122,6 +123,7 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 	bool bIsBlocked = false;
 	int iClient = 0;
 	char szClientSteamID64[64] = "";
+	char szClientIP[64] = "";
 	char szURL[128] = "";
 	
 	// Check if request was successfull
@@ -140,7 +142,8 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 					if (iClient > 0 && IsClientConnected(iClient) && IsClientInGame(iClient))
 					{
 						ReadPackString(dpClient, szClientSteamID64, sizeof(szClientSteamID64));
-						Format(szURL, sizeof(szURL), "%s?sid=%s", g_szRedirectURL, szClientSteamID64);
+						ReadPackString(dpClient, szClientIP, sizeof(szClientIP));
+						Format(szURL, sizeof(szURL), "%s?sid=%s&ip=%s", g_szRedirectURL, szClientSteamID64, szClientIP);
 						LoadMOTDPanel(iClient, "MOTD Fixer", szURL, false);
 					}
 				}

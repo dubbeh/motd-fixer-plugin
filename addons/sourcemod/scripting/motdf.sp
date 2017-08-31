@@ -22,7 +22,7 @@
 #define REQUIRE_EXTENSIONS
 #define REQUIRE_PLUGIN
 
-#define PLUGIN_VERSION 		"1.01"
+#define PLUGIN_VERSION 		"1.02"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -43,6 +43,7 @@ public Plugin myinfo =
 char g_szUpdateURL[] = "https://update.dubbeh.net/motdf/motdf.txt";
 char g_szRegisterURL[128] = "https://motd.dubbeh.net/register.php";
 char g_szRedirectURL[128] = "https://motd.dubbeh.net/redirect.php";
+char g_szIPCheckURL[128] = "https://motd.dubbeh.net/ipcheck.php";
 char g_szServerToken[64] = "";
 
 ConVar g_cVarEnable = null;
@@ -71,6 +72,7 @@ public void OnPluginStart()
 		g_cVarValidateType = CreateConVar("motdf_validatetype","1.0", "0 = IP | 1 = Token authentication", 0, true, 0.0, true, 1.0);
 
 		RegAdminCmd("motdf_register", Command_MOTDRegisterServer, ADMFLAG_RCON, "Register the current server to use the MOTD redirect service.");
+		RegAdminCmd("motdf_serverip", Command_MOTDGetServerIP, ADMFLAG_RCON, "Get the server IP that's recieved by the PHP script.");
 	} else {
 		SetFailState("This plugin is for CS:GO only. Fixes the MOTD loading.");
 	}
@@ -123,4 +125,53 @@ public void OnLibraryRemoved(const char[] name)
 {
 	if (StrEqual(name, "updater"))
 		g_bUpdaterAvail = false;
+}
+
+public Action Command_MOTDGetServerIP(int iClient, int iArgs)
+{
+	Handle hHTTPRequest = INVALID_HANDLE;
+	
+	if (g_cVarEnable.BoolValue) {
+		if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded())
+		{
+			if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, g_szIPCheckURL)) != INVALID_HANDLE)
+			{
+				if (!SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) ||
+					!SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, iClient ? GetClientSerial(iClient) : 0) ||
+					!SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnGetServerIPComplete) ||
+					!SteamWorks_SendHTTPRequest(hHTTPRequest))
+				{
+					MOTDFLogMessage("Command_MOTDGetServerIP () Error setting HTTP request data for IP checking.");
+				}
+			} else {
+				MOTDFLogMessage("Command_MOTDGetServerIP () Unable to create HTTP request.");
+			}
+		} else {
+			MOTDFLogMessage("Command_MOTDGetServerIP () SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
+		}
+	}
+
+	return Plugin_Handled;
+}
+
+public void SteamWorks_OnGetServerIPComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, any iClientSerial)
+{
+	char szResponseData[512] = "";
+	int iResponseSize = 0;
+	int iClient = 0;
+	
+	if (!bFailure && bRequestSuccessful && eStatusCode == k_EHTTPStatusCode200OK)
+	{
+		if (SteamWorks_GetHTTPResponseBodySize(hRequest, iResponseSize) && SteamWorks_GetHTTPResponseBodyData(hRequest, szResponseData, iResponseSize))
+		{
+			ReplyToCommand(GetClientFromSerial(iClient), "[MOTD-FIXER] External server IP is: %s", szResponseData);
+			MOTDFLogMessage("[MOTD-FIXER] External server IP is: %s", szResponseData);
+		} else {
+			MOTDFLogMessage("SteamWorks_OnGetServerIPComplete() Error retrieving registration response data.");
+		}
+	} else {
+		MOTDFLogMessage("SteamWorks_OnGetServerIPComplete() Error: Response code %d .", eStatusCode);
+	}
+
+	CloseHandle(hRequest);
 }
