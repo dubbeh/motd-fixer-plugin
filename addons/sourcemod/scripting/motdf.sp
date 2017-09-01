@@ -22,7 +22,7 @@
 #define REQUIRE_EXTENSIONS
 #define REQUIRE_PLUGIN
 
-#define PLUGIN_VERSION 		"1.02"
+#define PLUGIN_VERSION 		"1.03"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1

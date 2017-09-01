@@ -25,13 +25,18 @@ public int Native_MOTDF_ShowMOTDPanel (Handle hPlugin, int iNumParams)
 			{
 				// Grab all the parameters
 				int iClientIndex = GetNativeCell(1);
+				
+				// Added check to avoid running anything with disconnected clients
+				if (!iClientIndex || !IsClientConnected(iClientIndex) || !IsClientInGame(iClientIndex))
+				    return 0;
+				
 				int iClientSerial = GetClientSerial(iClientIndex); // Convert client index to serial for thread safe operations
 				GetNativeString(2, szTitle, sizeof(szTitle)); // MOTD panel title
 				GetNativeString(3, szURL, sizeof(szURL)); // Grab the URL
 				bool bHidden = GetNativeCell(4); // Is the window hidden
 				int iPanelWidth = GetNativeCell(5); // Get the MOTD panel width
 				int iPanelHeight = GetNativeCell(6); // Get the MOTD panel height
-
+				
 				if (iClientSerial > 0 && szURL[0])
 				{
 					// Is SteamWorks available?
@@ -41,29 +46,36 @@ public int Native_MOTDF_ShowMOTDPanel (Handle hPlugin, int iNumParams)
 						Format(szRegisterURL, sizeof(szRegisterURL), "%s?client=1", g_szRegisterURL);
 						if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE)
 						{
-							if (!SetClientRequestData(hHTTPRequest, iClientIndex, iClientSerial) ||
-								!SetPanelRequestData(hHTTPRequest, szTitle, szURL, bHidden, iPanelWidth, iPanelHeight) ||
-								!SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) ||
-								!SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnClientURLRegisterComplete) ||
-								!SteamWorks_SendHTTPRequest(hHTTPRequest))
+							if (SetClientRequestData(hHTTPRequest, iClientIndex, iClientSerial) &&
+								SetPanelRequestData(hHTTPRequest, szTitle, szURL, bHidden, iPanelWidth, iPanelHeight))
 							{
-								CloseHandle(hHTTPRequest);
-								return ThrowNativeError(SP_ERROR_NATIVE, "Error setting variables for the HTTP request.");
+								if (!SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) ||
+									!SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnClientURLRegisterComplete) ||
+									!SteamWorks_SendHTTPRequest(hHTTPRequest))
+								{
+									ThrowNativeError(SP_ERROR_NATIVE, "Error setting SteamWorks HTTP request info or sending.");
+								} else {
+									return 1;
+								}
+							} else {
+								ThrowNativeError(SP_ERROR_NATIVE, "Error setting client or panel request data.");
 							}
+							
+							CloseHandle(hHTTPRequest);
 						} else {
-							return ThrowNativeError(SP_ERROR_NATIVE, "Error creating the SteamWorks HTTP request.");
+							ThrowNativeError(SP_ERROR_NATIVE, "Error creating the SteamWorks HTTP request.");
 						}
 					} else {
-						return ThrowNativeError(SP_ERROR_NATIVE, "SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
+						ThrowNativeError(SP_ERROR_NATIVE, "SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
 					}
 				} else {
-					return ThrowNativeError(SP_ERROR_NATIVE, "Client serial appears to be 0 or no URL set.");
+					ThrowNativeError(SP_ERROR_NATIVE, "Client serial appears to be 0 or no URL set.");
 				}
 			} else {
-				return ThrowNativeError(SP_ERROR_NATIVE, "No server token set. Make sure to run motdf_register with RCON access first.");
+				ThrowNativeError(SP_ERROR_NATIVE, "No server token set. Make sure to run motdf_register with RCON access first.");
 			}
 		} else {
-			return ThrowNativeError(SP_ERROR_NATIVE, "Invalid number of parameters.");
+			ThrowNativeError(SP_ERROR_NATIVE, "Invalid number of parameters.");
 		}
 	}
 	
