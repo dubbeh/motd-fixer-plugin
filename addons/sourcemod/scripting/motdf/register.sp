@@ -12,40 +12,45 @@
 
 public Action Command_MOTDRegisterServer(int iClient, int iArgs)
 {
+	if (g_cVarEnable.BoolValue) {
+		RegisterServer(iClient);
+	}
+	
+	return Plugin_Handled;
+}
+
+void RegisterServer(int iClient)
+{
 	char szRegisterURL[192] = "";
 	Handle hHTTPRequest = INVALID_HANDLE;
 	
-	if (g_cVarEnable.BoolValue) {
+	if (g_cVarValidateType.IntValue == VALIDATE_TOKEN) {
 		
-		if (g_cVarValidateType.IntValue == VALIDATE_TOKEN) {
+		if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded()) {
 			
-			if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded()) {
+			Format(szRegisterURL, sizeof(szRegisterURL), "%s?server=1", g_szRegisterURL);
+			
+			if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE) {
 				
-				Format(szRegisterURL, sizeof(szRegisterURL), "%s?server=1", g_szRegisterURL);
-				
-				if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE) {
-					
-					if (SetServerInfoPostData(hHTTPRequest) &&
-						SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) &&
-						SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnRegisterComplete) &&
-						SteamWorks_SendHTTPRequest(hHTTPRequest))
-					{
-						MOTDFLogMessage("Command_MOTDRegisterServer () Registering server.");
-					} else {
-						MOTDFLogMessage("Command_MOTDRegisterServer () Error setting HTTP request data for server registration.");
-					}
+				if (SetServerInfoPostData(hHTTPRequest) && 
+					SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) && 
+					SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnRegisterComplete) && 
+					SteamWorks_SendHTTPRequest(hHTTPRequest))
+				{
+					MOTDFLogMessage("Command_MOTDRegisterServer () Registering server.");
 				} else {
-					MOTDFLogMessage("Command_MOTDRegisterServer () Unable to create HTTP request.");
+					MOTDFLogMessage("Command_MOTDRegisterServer () Error setting HTTP request data for server registration.");
 				}
 			} else {
-				MOTDFLogMessage("Command_MOTDRegisterServer () SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
+				MOTDFLogMessage("Command_MOTDRegisterServer () Unable to create HTTP request.");
 			}
 		} else {
-			ReplyToCommand(iClient, "No need to register under IP based validation");
+			MOTDFLogMessage("Command_MOTDRegisterServer () SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
 		}
+	} else {
+		ReplyToCommand(iClient, "No need to register under IP based validation");
 	}
-
-	return Plugin_Handled;
+	return;
 }
 
 public void SteamWorks_OnRegisterComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode)
@@ -77,6 +82,6 @@ public void SteamWorks_OnRegisterComplete(Handle hRequest, bool bFailure, bool b
 	} else {
 		MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: Response code %d .", eStatusCode);
 	}
-
+	
 	CloseHandle(hRequest);
 }

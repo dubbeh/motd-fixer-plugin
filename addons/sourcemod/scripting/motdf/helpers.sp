@@ -9,7 +9,7 @@
  *
  */
 
-void MOTDFLogMessage(char []szInput, any ...)
+void MOTDFLogMessage(char[] szInput, any...)
 {
 	if (g_cVarLogging.BoolValue)
 	{
@@ -38,7 +38,7 @@ void LoadMOTDPanel(int iClient, char[] szTitle, char[] szPage, bool bHidden)
 	CloseHandle(kv);
 }
 
-bool ReadJSONResponse (char []szResponseData, char []szResMessage, int iResMessageSize, bool bIsBlocked = false, char []szServerToken = "", int iServerTokenSize = 0)
+bool ReadJSONResponse(char[] szResponseData, char[] szResMessage, int iResMessageSize, bool bIsBlocked = false, char[] szServerToken = "", int iServerTokenSize = 0)
 {
 	Handle hJSON = INVALID_HANDLE;
 	bool bSuccess = false;
@@ -62,25 +62,25 @@ bool ReadJSONResponse (char []szResponseData, char []szResMessage, int iResMessa
 	return bSuccess;
 }
 
-bool SetServerInfoPostData (Handle hHTTPRequest)
+bool SetServerInfoPostData(Handle hHTTPRequest)
 {
 	char szServerName[64] = "";
 	char szServerIP[64] = "";
 	char szServerPort[8] = "";
-
-	if (GetServerName(szServerName, sizeof(szServerName)) &&
-		GetServerIP(szServerIP, sizeof(szServerIP)) &&
+	
+	if (GetServerName(szServerName, sizeof(szServerName)) && 
+		GetServerIP(szServerIP, sizeof(szServerIP)) && 
 		GetServerPort(szServerPort, sizeof(szServerPort)))
 	{
-		return SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servername", szServerName) &&
-			SteamWorks_SetHTTPRequestGetOrPostParameter (hHTTPRequest, "serverip", szServerIP) &&
-			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverport", szServerPort);
+		return SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servername", szServerName) && 
+		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverip", szServerIP) && 
+		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverport", szServerPort);
 	} else {
 		return false;
 	}
 }
 
-bool GetServerName(char []szBuffer, int iBufferSize)
+bool GetServerName(char[] szBuffer, int iBufferSize)
 {
 	ConVar cVarHostName = null;
 	
@@ -94,7 +94,7 @@ bool GetServerName(char []szBuffer, int iBufferSize)
 	return false;
 }
 
-bool GetServerIP(char []szBuffer, int iBufferSize)
+bool GetServerIP(char[] szBuffer, int iBufferSize)
 {
 	int iServerIP[4];
 	
@@ -107,7 +107,7 @@ bool GetServerIP(char []szBuffer, int iBufferSize)
 	return false;
 }
 
-bool GetServerPort (char []szBuffer, int iBufferSize)
+bool GetServerPort(char[] szBuffer, int iBufferSize)
 {
 	ConVar cVarServerPort = null;
 	

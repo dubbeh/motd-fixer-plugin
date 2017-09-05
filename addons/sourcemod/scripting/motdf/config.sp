@@ -9,10 +9,10 @@
  *
  */
 
- 
+
 methodmap MOTDConfig
 {
-	public KeyValues Init(char []szPath, int iPathMaxSize)
+	public KeyValues Init(char[] szPath, int iPathMaxSize)
 	{
 		KeyValues kv = null;
 		
@@ -52,7 +52,7 @@ methodmap MOTDConfig
 		delete kv;
 	}
 	
-	public bool Save ()
+	public bool Save()
 	{
 		char szLocalPath[PLATFORM_MAX_PATH + 1];
 		KeyValues kv = this.Init(szLocalPath, sizeof(szLocalPath));
