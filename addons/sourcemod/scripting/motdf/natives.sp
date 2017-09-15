@@ -14,8 +14,8 @@ public int Native_MOTDF_ShowMOTDPanel(Handle hPlugin, int iNumParams)
 {
 	Handle hHTTPRequest = null;
 	char szTitle[64] = "";
-	char szURL[128] = "";
-	char szRegisterURL[128] = "";
+	char szURL[255] = "";
+	char szRegisterURL[255] = "";
 	
 	if (g_cVarEnable.BoolValue)
 	{
@@ -128,6 +128,12 @@ bool SetPanelRequestData(Handle hHTTPRequest, char[] szTitle, char[] szURL, bool
 	
 	IntToString(iPanelWidth, szPanelWidth, sizeof(szPanelWidth));
 	IntToString(iPanelHeight, szPanelHeight, sizeof(szPanelHeight));
+	
+	// Check that the panel_url isn't too long
+	if (strlen(szURL) >= 255) {
+		MOTDFLogMessage("SetPanelRequestData() Error: panel_url is too long >= 255 characters");
+		return false;
+	}
 	
 	if (SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_title", szTitle) && 
 		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "panel_url", szURL) && 

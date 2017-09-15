@@ -22,7 +22,7 @@
 #define REQUIRE_EXTENSIONS
 #define REQUIRE_PLUGIN
 
-#define PLUGIN_VERSION 		"1.04"
+#define PLUGIN_VERSION 		"1.05"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -65,24 +65,22 @@ MOTDConfig g_Config;
 
 public void OnPluginStart()
 {
-	EngineVersion ev = GetEngineVersion();
-	
-	if (ev == Engine_CSGO) {
-		CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
-		g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
-		g_cVarLogging = CreateConVar("motdf_logging", "1.0", "Enable MOTD Fixer logging", 0, true, 0.0, true, 1.0);
-		g_cVarValidateType = CreateConVar("motdf_validatetype", "1.0", "0 = IP | 1 = Token authentication", 0, true, 0.0, true, 1.0);
-		g_cVarAutoRegister = CreateConVar("motdf_autoregister", "1.0", "Auto-register the server on the first call to MOTDF_ShowMOTDPanel", 0, true, 0.0, true, 1.0);
+	CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
+	g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
+	g_cVarLogging = CreateConVar("motdf_logging", "1.0", "Enable MOTD Fixer logging", 0, true, 0.0, true, 1.0);
+	g_cVarValidateType = CreateConVar("motdf_validatetype", "1.0", "0 = IP | 1 = Token authentication", 0, true, 0.0, true, 1.0);
+	g_cVarAutoRegister = CreateConVar("motdf_autoregister", "1.0", "Auto-register the server on the first call to MOTDF_ShowMOTDPanel", 0, true, 0.0, true, 1.0);
 		
-		RegAdminCmd("motdf_register", Command_MOTDRegisterServer, ADMFLAG_RCON, "Register the current server to use the MOTD redirect service.");
-		RegAdminCmd("motdf_serverip", Command_MOTDGetServerIP, ADMFLAG_RCON, "Get the server IP that's recieved by the PHP script.");
+	RegAdminCmd("motdf_register", Command_MOTDRegisterServer, ADMFLAG_RCON, "Register the current server to use the MOTD redirect service.");
+	RegAdminCmd("motdf_serverip", Command_MOTDGetServerIP, ADMFLAG_RCON, "Get the server IP that's recieved by the PHP script.");
 		
-		// Auto create the config file, if it doesn't exist
-		AutoExecConfig(true, "plugin.motdf", "sourcemod");
-		ServerCommand("exec %s", g_szConfigFile);
+	// Auto create the config file, if it doesn't exist
+	AutoExecConfig(true, "plugin.motdf", "sourcemod");
+	ServerCommand("exec %s", g_szConfigFile);
 		
-	} else {
-		MOTDFLogMessage("This plugin is for CS:GO only - Fixes the MOTD loading. Can be removed for other mods.");
+	if (GetEngineVersion() != Engine_CSGO)
+	{
+		MOTDFLogMessage("This plugin is currently for CS:GO only - Fixes the MOTD loading. Can be removed for other mods.");
 	}
 }
 

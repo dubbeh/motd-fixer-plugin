@@ -22,7 +22,7 @@ public Plugin myinfo =
 	name = "MOTD Fixer Google Example",
 	author = "dubbeh",
 	description = "Basic example showing how MOTD Fixer works",
-	version = "1.0",
+	version = "1.1",
 	url = "https://dubbeh.net"
 };
 
@@ -39,7 +39,7 @@ public Action Command_Google(int iClient, int iArgs)
 	
 	GetCmdArgString(szQueryString, sizeof(szQueryString));
 	ReplaceString(szQueryString, sizeof(szQueryString), " ", "+", false);
-	Format(szURL, sizeof(szURL), "https://www.google.com?search?q=%s", szQueryString);
+	Format(szURL, sizeof(szURL), "https://www.google.com/search?q=%s", szQueryString);
 	MOTDF_ShowMOTDPanel(iClient, "Google", szURL, false, 1024, 576);
 	return Plugin_Handled;
 }

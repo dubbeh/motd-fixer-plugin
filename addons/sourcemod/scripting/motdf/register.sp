@@ -21,7 +21,7 @@ public Action Command_MOTDRegisterServer(int iClient, int iArgs)
 
 void RegisterServer(int iClient)
 {
-	char szRegisterURL[192] = "";
+	char szRegisterURL[255] = "";
 	Handle hHTTPRequest = INVALID_HANDLE;
 	
 	if (g_cVarValidateType.IntValue == VALIDATE_TOKEN) {
