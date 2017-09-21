@@ -73,8 +73,8 @@ bool SetServerInfoPostData(Handle hHTTPRequest)
 		GetServerPort(szServerPort, sizeof(szServerPort)))
 	{
 		return SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servername", szServerName) && 
-		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverip", szServerIP) && 
-		SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverport", szServerPort);
+			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverip", szServerIP) && 
+			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "serverport", szServerPort);
 	} else {
 		return false;
 	}
@@ -121,3 +121,32 @@ bool GetServerPort(char[] szBuffer, int iBufferSize)
 	return false;
 }
 
+// Check if the game engine is supported
+bool IsEngineSupported(int iClient)
+{
+	if (g_EngineVersion != Engine_CSGO)
+	{
+		if (iClient && IsClientConnected(iClient) && IsClientInGame(iClient))
+		    PrintToChat(iClient, "%T", "Engine Unsupported", LANG_SERVER);
+		else if (!iClient)
+			PrintToServer("%T", "Engine Unsupported", LANG_SERVER);
+
+		return false;
+	}
+	
+	return true;
+}
+
+void ShowMOTDPanelCustom (int iClient, const char[] szTitle, const char[] szPage, bool bHidden)
+{
+	Handle kv = INVALID_HANDLE;
+	kv = CreateKeyValues("data");
+		
+	KvSetString(kv, "title", szTitle);
+	KvSetNum(kv, "type", MOTDPANEL_TYPE_URL);
+	KvSetString(kv, "msg", szPage);
+	KvSetNum(kv, "cmd", 0); //http://forums.alliedmods.net/showthread.php?p=1220212
+	//KvSetNum(kv, "customsvr", 1); // Only for big panels in TF2 - Thanks Dr. McKay
+	ShowVGUIPanel(iClient, "info", kv, bHidden);
+	CloseHandle(kv);
+}

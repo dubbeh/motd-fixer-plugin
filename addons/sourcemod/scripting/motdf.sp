@@ -14,6 +14,7 @@
 #pragma newdecls required
 
 #include <sourcemod>
+
 #undef REQUIRE_PLUGIN
 #undef REQUIRE_EXTENSIONS
 #include <smjansson>
@@ -22,7 +23,7 @@
 #define REQUIRE_EXTENSIONS
 #define REQUIRE_PLUGIN
 
-#define PLUGIN_VERSION 		"1.05"
+#define PLUGIN_VERSION 		"1.06"
 #define MAX_MOTD_URL_SIZE 	192
 #define VALIDATE_IP			0
 #define VALIDATE_TOKEN		1
@@ -41,9 +42,7 @@ public Plugin myinfo =
 };
 
 char g_szUpdateURL[] = "https://update.dubbeh.net/motdf/motdf.txt";
-char g_szRegisterURL[128] = "https://motd.dubbeh.net/register.php";
-char g_szRedirectURL[128] = "https://motd.dubbeh.net/redirect.php";
-char g_szIPCheckURL[128] = "https://motd.dubbeh.net/ipcheck.php";
+char g_szBaseURL[128] = "https://motd.dubbeh.net";
 char g_szServerToken[64] = "";
 char g_szConfigFile[] = "sourcemod/plugin.motdf.cfg";
 
@@ -54,31 +53,43 @@ ConVar g_cVarAutoRegister = null;
 
 bool g_bUpdaterAvail = false;
 
+EngineVersion g_EngineVersion = Engine_Unknown;
+bool g_bDisabledHTMLMOTD[MAXPLAYERS + 1];
+
+
 #include "motdf/config.sp"
 
 MOTDConfig g_Config;
 
 #include "motdf/helpers.sp"
 #include "motdf/natives.sp"
-#include "motdf/register.sp"
+#include "motdf/commands.sp"
 
 
 public void OnPluginStart()
 {
 	CreateConVar("motdf_version", PLUGIN_VERSION, "MOTD Fixer version", FCVAR_NOTIFY | FCVAR_DONTRECORD);
-	g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", 0, true, 0.0, true, 1.0);
-	g_cVarLogging = CreateConVar("motdf_logging", "1.0", "Enable MOTD Fixer logging", 0, true, 0.0, true, 1.0);
-	g_cVarValidateType = CreateConVar("motdf_validatetype", "1.0", "0 = IP | 1 = Token authentication", 0, true, 0.0, true, 1.0);
-	g_cVarAutoRegister = CreateConVar("motdf_autoregister", "1.0", "Auto-register the server on the first call to MOTDF_ShowMOTDPanel", 0, true, 0.0, true, 1.0);
-		
+	g_cVarEnable = CreateConVar("motdf_enable", "1.0", "Enable MOTD Fixer", FCVAR_NONE, true, 0.0, true, 1.0);
+	g_cVarLogging = CreateConVar("motdf_logging", "1.0", "Enable MOTD Fixer logging", FCVAR_NONE, true, 0.0, true, 1.0);
+	g_cVarValidateType = CreateConVar("motdf_validatetype", "1.0", "0 = IP | 1 = Token authentication", FCVAR_NONE, true, 0.0, true, 1.0);
+	g_cVarAutoRegister = CreateConVar("motdf_autoregister", "1.0", "Auto-register the server on the first call to MOTDF_ShowMOTDPanel", FCVAR_NONE, true, 0.0, true, 1.0);
+	
+	LoadTranslations("motdf.phrases");
+	
 	RegAdminCmd("motdf_register", Command_MOTDRegisterServer, ADMFLAG_RCON, "Register the current server to use the MOTD redirect service.");
 	RegAdminCmd("motdf_serverip", Command_MOTDGetServerIP, ADMFLAG_RCON, "Get the server IP that's recieved by the PHP script.");
-		
+
 	// Auto create the config file, if it doesn't exist
 	AutoExecConfig(true, "plugin.motdf", "sourcemod");
 	ServerCommand("exec %s", g_szConfigFile);
-		
-	if (GetEngineVersion() != Engine_CSGO)
+	
+	for (int iIndex = 0; iIndex <= MAXPLAYERS; iIndex++) {
+		g_bDisabledHTMLMOTD[iIndex] = false;
+	}
+	
+	g_EngineVersion = GetEngineVersion();
+	
+	if (g_EngineVersion != Engine_CSGO)
 	{
 		MOTDFLogMessage("This plugin is currently for CS:GO only - Fixes the MOTD loading. Can be removed for other mods.");
 	}
@@ -91,14 +102,20 @@ public void OnAllPluginsLoaded()
 	} else {
 		MOTDFLogMessage("Found extension SteamWorks.");
 	}
-	
+
 	if (!SMJANSSON_AVAILABLE()) {
 		MOTDFLogMessage("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
 	} else {
 		MOTDFLogMessage("Found extension SMJansson.");
 	}
-	
+
 	g_bUpdaterAvail = LibraryExists("updater");
+	
+	if (!g_bUpdaterAvail) {
+		MOTDFLogMessage("Unable to find Updater. Please install it from https://forums.alliedmods.net/showthread.php?t=169095");
+	} else {
+		MOTDFLogMessage("Found plugin Updater.");
+	}
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
@@ -135,51 +152,20 @@ public void OnLibraryRemoved(const char[] name)
 		g_bUpdaterAvail = false;
 }
 
-public Action Command_MOTDGetServerIP(int iClient, int iArgs)
+public void OnClientPostAdminCheck(int iClient)
 {
-	Handle hHTTPRequest = INVALID_HANDLE;
+	g_bDisabledHTMLMOTD[iClient] = false;
 	
-	if (g_cVarEnable.BoolValue) {
-		if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded())
-		{
-			if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, g_szIPCheckURL)) != INVALID_HANDLE)
-			{
-				if (!SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) || 
-					!SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, iClient ? GetClientSerial(iClient) : 0) || 
-					!SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnGetServerIPComplete) || 
-					!SteamWorks_SendHTTPRequest(hHTTPRequest))
-				{
-					MOTDFLogMessage("Command_MOTDGetServerIP () Error setting HTTP request data for IP checking.");
-				}
-			} else {
-				MOTDFLogMessage("Command_MOTDGetServerIP () Unable to create HTTP request.");
-			}
-		} else {
-			MOTDFLogMessage("Command_MOTDGetServerIP () SteamWorks doesn't appear to be loaded. Make sure to have it installed and running first.");
-		}
-	}
-	
-	return Plugin_Handled;
+	// Check if cl_disablehtmlmotd enabled
+	QueryClientConVar(iClient, "cl_disablehtmlmotd", CheckDisabledHTMLMOTD);
 }
 
-public void SteamWorks_OnGetServerIPComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, any iClientSerial)
+// Thanks to psychonic for the cl_disablehtmlmotd query code - modified it a little
+public int CheckDisabledHTMLMOTD(QueryCookie qcCookie, int iClient, ConVarQueryResult cqrResult, const char[] szCvarName, const char[] szCvarValue)
 {
-	char szResponseData[512] = "";
-	int iResponseSize = 0;
-	int iClient = 0;
-	
-	if (!bFailure && bRequestSuccessful && eStatusCode == k_EHTTPStatusCode200OK)
+	if (cqrResult == ConVarQuery_Okay && StringToInt(szCvarValue) == 1)
 	{
-		if (SteamWorks_GetHTTPResponseBodySize(hRequest, iResponseSize) && SteamWorks_GetHTTPResponseBodyData(hRequest, szResponseData, iResponseSize))
-		{
-			ReplyToCommand(GetClientFromSerial(iClient), "[MOTD-FIXER] External server IP is: %s", szResponseData);
-			MOTDFLogMessage("[MOTD-FIXER] External server IP is: %s", szResponseData);
-		} else {
-			MOTDFLogMessage("SteamWorks_OnGetServerIPComplete() Error retrieving registration response data.");
-		}
-	} else {
-		MOTDFLogMessage("SteamWorks_OnGetServerIPComplete() Error: Response code %d .", eStatusCode);
+		g_bDisabledHTMLMOTD[iClient] = true;
+		PrintToChat(iClient, "%T", "Disabled HTML MOTD On", LANG_SERVER);
 	}
-	
-	CloseHandle(hRequest);
-} 
+}

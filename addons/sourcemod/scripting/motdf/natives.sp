@@ -28,6 +28,13 @@ public int Native_MOTDF_ShowMOTDPanel(Handle hPlugin, int iNumParams)
 			if (!iClientIndex || !IsClientConnected(iClientIndex) || !IsClientInGame(iClientIndex))
 				return 0;
 			
+			
+			// Check that the client has cl_disablehtmlmotd off before we register any URLs
+			if (g_bDisabledHTMLMOTD[iClientIndex]) {
+				PrintToChat(iClientIndex, "%T", "Disabled HTML MOTD On", LANG_SERVER);
+				return 0;
+			}
+			
 			if ((g_szServerToken[0] && g_cVarValidateType.IntValue == VALIDATE_TOKEN) || 
 				g_cVarValidateType.IntValue == VALIDATE_IP)
 			{
@@ -38,13 +45,20 @@ public int Native_MOTDF_ShowMOTDPanel(Handle hPlugin, int iNumParams)
 				int iPanelWidth = GetNativeCell(5); // Get the MOTD panel width
 				int iPanelHeight = GetNativeCell(6); // Get the MOTD panel height
 				
+				// If unsupported mod found - Load a panel with the users settings and display a message
+				if (!IsEngineSupported(iClientIndex)) {
+					ShowMOTDPanelCustom(iClientIndex, szTitle, szURL, bHidden);
+					return 0;
+				}
+
 				if (iClientSerial > 0 && szURL[0])
 				{
 					// Is SteamWorks available?
 					if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded())
 					{
 						// First send the URL to be registered with the server
-						Format(szRegisterURL, sizeof(szRegisterURL), "%s?client=1", g_szRegisterURL);
+						Format(szRegisterURL, sizeof(szRegisterURL), "%s/register.php?client=1", g_szBaseURL);
+						
 						if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE)
 						{
 							if (SetClientRequestData(hHTTPRequest, iClientIndex, iClientSerial) && 
@@ -162,6 +176,7 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 	char szClientSteamID64[64] = "";
 	char szClientIP[64] = "";
 	char szURL[128] = "";
+	Handle hHTTPRequest = INVALID_HANDLE;
 	
 	// Check if request was successfull
 	if (!bFailure && bRequestSuccessful && eStatusCode == k_EHTTPStatusCode200OK)
@@ -180,8 +195,26 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 					{
 						ReadPackString(dpClient, szClientSteamID64, sizeof(szClientSteamID64));
 						ReadPackString(dpClient, szClientIP, sizeof(szClientIP));
-						Format(szURL, sizeof(szURL), "%s?sid=%s&ip=%s", g_szRedirectURL, szClientSteamID64, szClientIP);
+						Format(szURL, sizeof(szURL), "%s/redirect.php?sid=%s&ip=%s", g_szBaseURL, szClientSteamID64, szClientIP);
 						LoadMOTDPanel(iClient, "MOTD Fixer", szURL, false);
+					} else {
+						// Assume client DC'd - Issue a "Delete from database" command instead
+						ReadPackString(dpClient, szClientSteamID64, sizeof(szClientSteamID64));
+						ReadPackString(dpClient, szClientIP, sizeof(szClientIP));
+						
+						Format(szURL, sizeof(szURL), "%s/delete.php?sid=%s&ip=%s", g_szBaseURL, szClientSteamID64, szClientIP);
+						
+						if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szURL)) != INVALID_HANDLE)
+						{
+							if (!SetServerInfoPostData(hHTTPRequest) ||
+							    !SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servertoken", (g_cVarValidateType.IntValue == VALIDATE_TOKEN) ? g_szServerToken : "") ||
+							    !SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) ||
+							    !SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnClientURLDeleteComplete) || 
+								!SteamWorks_SendHTTPRequest(hHTTPRequest))
+							{
+								MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Error sending the client delete command.");
+							}
+						}
 					}
 				}
 			} else {
@@ -193,8 +226,19 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 	} else {
 		MOTDFLogMessage("Error recieving HTTP request - Status Code: %d", eStatusCode);
 	}
-	
+
 	// Make sure to close the handles to the DataPack and the HTTP Request
 	CloseHandle(dpClient);
+	CloseHandle(hRequest);
+}
+
+public void SteamWorks_OnClientURLDeleteComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, any data)
+{
+	// Check if request was unsuccessfull
+	if (bFailure || !bRequestSuccessful || eStatusCode != k_EHTTPStatusCode200OK)
+	{
+		MOTDFLogMessage("SteamWorks_OnClientURLDeleteComplete () : Error recieving HTTP request - Status Code: %d", eStatusCode);
+	}
+
 	CloseHandle(hRequest);
 }

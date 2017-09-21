@@ -1,0 +1,20 @@
+﻿"Phrases"
+{
+	"Engine Unsupported"
+	{
+		"en"		"Unsupported game engine found - Only CS:GO is supported right now. Running the default ShowMOTDPanel."
+	}
+	"Disabled HTML MOTD On"
+	{
+		"en"		"cl_disablehtmlmotd is Enabled. Please disable it to use MOTD Fixer correctly."
+	}
+	"External Server IP"
+	{
+		"#format"	"{1:s}"
+		"en"		"External Server IP is: {1}"
+	}
+	"Registraion Not Required"
+	{
+		"en"		"No need to register under IP based validation"
+	}
+}
