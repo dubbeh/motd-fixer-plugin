@@ -1,0 +1,4 @@
+"MOTD Fix"
+{
+	"Base URL"		"https://motd.dubbeh.net"
+}
