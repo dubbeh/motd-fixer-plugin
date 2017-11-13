@@ -21,13 +21,12 @@ public int Native_MOTDF_ShowMOTDPanel(Handle hPlugin, int iNumParams)
 	{
 		if (iNumParams == 6)
 		{
-			// Grab all the parameters
+			// Grab all client index parameter
 			int iClientIndex = GetNativeCell(1);
 			
 			// Added check to avoid running anything with disconnected clients
 			if (!iClientIndex || !IsClientConnected(iClientIndex) || !IsClientInGame(iClientIndex))
 				return 0;
-			
 			
 			// Check that the client has cl_disablehtmlmotd off before we register any URLs
 			if (g_bDisabledHTMLMOTD[iClientIndex]) {
@@ -50,7 +49,7 @@ public int Native_MOTDF_ShowMOTDPanel(Handle hPlugin, int iNumParams)
 					ShowMOTDPanelCustom(iClientIndex, szTitle, szURL, bHidden);
 					return 0;
 				}
-
+				
 				if (iClientSerial > 0 && szURL[0])
 				{
 					// Is SteamWorks available?
@@ -110,28 +109,33 @@ bool SetClientRequestData(Handle hHTTPRequest, int iClient, int iClientSerial)
 	char szClientSteamID64[64] = "";
 	
 	if (GetClientIP(iClient, szClientIP, sizeof(szClientIP)) && 
-		GetClientAuthId(iClient, AuthId_SteamID64, szClientSteamID64, sizeof(szClientSteamID64)) && 
-		SetServerInfoPostData(hHTTPRequest))
+		GetClientAuthId(iClient, AuthId_SteamID64, szClientSteamID64, sizeof(szClientSteamID64)))
 	{
-		dpClient = new DataPack();
-		dpClient.WriteCell(iClientSerial);
-		dpClient.WriteString(szClientSteamID64);
-		dpClient.WriteString(szClientIP);
-		dpClient.Reset(false);
-		
-		if (SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, dpClient) && 
-			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "clientip", szClientIP) && 
-			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "steamid64", szClientSteamID64) && 
-			SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servertoken", (g_cVarValidateType.IntValue == VALIDATE_TOKEN) ? g_szServerToken : ""))
+		if (SetServerInfoPostData(hHTTPRequest))
 		{
-			return true;
+			dpClient = new DataPack();
+			dpClient.WriteCell(iClientSerial);
+			dpClient.WriteString(szClientSteamID64);
+			dpClient.WriteString(szClientIP);
+			dpClient.Reset(false);
+			
+			if (SteamWorks_SetHTTPRequestContextValue(hHTTPRequest, dpClient) && 
+				SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "clientip", szClientIP) && 
+				SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "steamid64", szClientSteamID64) && 
+				SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servertoken", (g_cVarValidateType.IntValue == VALIDATE_TOKEN) ? g_szServerToken : ""))
+			{
+				return true;
+			} else {
+				MOTDFLogMessage("SetClientRequestData() Error: Unable to set client or server post data.");
+				return false;
+			}
 		} else {
-			MOTDFLogMessage("SetClientRequestData() Error: Unable to set client or server post data.");
+			MOTDFLogMessage("SetClientRequestData() Error: Unable to set Server Info.");
 			return false;
 		}
 	}
 	
-	MOTDFLogMessage("SetClientRequestData() Error: Unable to set Client IP, Auth ID or Server Info.");
+	MOTDFLogMessage("SetClientRequestData() Error: Unable to set Client IP or Auth ID.");
 	return false;
 }
 
@@ -164,14 +168,12 @@ bool SetPanelRequestData(Handle hHTTPRequest, char[] szTitle, char[] szURL, bool
 
 /*
  * This is called after the client URL has been registered with the server - now we need to load the standard URL and let the server side script do the rest
- * 
  */
 public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, any dpClient)
 {
 	char szResponseData[128] = "";
 	int iResponseSize = 0;
-	char szJSONResMsg[128] = "";
-	bool bIsBlocked = false;
+	bool bSuccess = false;
 	int iClient = 0;
 	char szClientSteamID64[64] = "";
 	char szClientIP[64] = "";
@@ -184,10 +186,12 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 		if (SteamWorks_GetHTTPResponseBodySize(hRequest, iResponseSize) && 
 			SteamWorks_GetHTTPResponseBodyData(hRequest, szResponseData, iResponseSize))
 		{
-			if (ReadJSONResponse(szResponseData, szJSONResMsg, sizeof(szJSONResMsg), bIsBlocked))
+			// First check the DataPack is valid first before we do any client processing
+			if (dpClient != INVALID_HANDLE)
 			{
-				// URL registered successfully - now we load the normal MOTD panel and let the web server do the rest
-				if (dpClient != INVALID_HANDLE && !bIsBlocked)
+				bSuccess = ReadJSONResponse(szResponseData, false);
+
+				if (bSuccess && g_bJSONIsTokenValid && !g_bJSONServerIsBlocked)
 				{
 					ResetPack(dpClient);
 					iClient = GetClientFromSerial(ReadPackCell(dpClient));
@@ -206,10 +210,10 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 						
 						if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szURL)) != INVALID_HANDLE)
 						{
-							if (!SetServerInfoPostData(hHTTPRequest) ||
-							    !SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servertoken", (g_cVarValidateType.IntValue == VALIDATE_TOKEN) ? g_szServerToken : "") ||
-							    !SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) ||
-							    !SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnClientURLDeleteComplete) || 
+							if (!SetServerInfoPostData(hHTTPRequest) || 
+								!SteamWorks_SetHTTPRequestGetOrPostParameter(hHTTPRequest, "servertoken", (g_cVarValidateType.IntValue == VALIDATE_TOKEN) ? g_szServerToken : "") || 
+								!SteamWorks_SetHTTPRequestNetworkActivityTimeout(hHTTPRequest, 10) || 
+								!SteamWorks_SetHTTPCallbacks(hHTTPRequest, SteamWorks_OnClientURLDeleteComplete) || 
 								!SteamWorks_SendHTTPRequest(hHTTPRequest))
 							{
 								MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Error sending the client delete command.");
@@ -217,18 +221,42 @@ public void SteamWorks_OnClientURLRegisterComplete(Handle hRequest, bool bFailur
 						}
 					}
 				}
+				// Check if the server token is invalid and not blocked
+				else if (!g_bJSONIsTokenValid && !g_bJSONServerIsBlocked)
+				{
+					// Lets re-register the server because the token appears to be invalid
+					if (g_cVarAutoRegister.BoolValue)
+					{
+						MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Server token is invalid - Registering server again.");
+						RegisterServer(0);
+					} else {
+						MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Server token is invalid - Run motdf_register to update (auto-registering disabled in the config)");
+					}
+					
+					ResetPack(dpClient);
+					iClient = GetClientFromSerial(ReadPackCell(dpClient));
+					
+					if (iClient > 0 && IsClientConnected(iClient) && IsClientInGame(iClient))
+						PrintToChat(iClient, "%T", "Token Invalid", LANG_SERVER);
+				}
+				// Server is blocked
+				else if (g_bJSONServerIsBlocked)
+				{
+					MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Server appears to be blocked from using %s.", g_szBaseURL);
+				}
+				
+				CloseHandle(dpClient);
 			} else {
-				MOTDFLogMessage("Error: %s - Is Server Blocked: %s", szJSONResMsg, bIsBlocked ? "Yes" : "No");
+				MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Clients DataPack handle is invalid.");
 			}
 		} else {
-			MOTDFLogMessage("Error getting registration response");
+			MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Error getting registration response");
 		}
 	} else {
-		MOTDFLogMessage("Error recieving HTTP request - Status Code: %d", eStatusCode);
+		MOTDFLogMessage("SteamWorks_OnClientURLRegisterComplete () : Error recieving HTTP request - Status Code: %d", eStatusCode);
 	}
-
-	// Make sure to close the handles to the DataPack and the HTTP Request
-	CloseHandle(dpClient);
+	
+	// Make sure to close the handle to the HTTP Request
 	CloseHandle(hRequest);
 }
 
@@ -239,6 +267,6 @@ public void SteamWorks_OnClientURLDeleteComplete(Handle hRequest, bool bFailure,
 	{
 		MOTDFLogMessage("SteamWorks_OnClientURLDeleteComplete () : Error recieving HTTP request - Status Code: %d", eStatusCode);
 	}
-
+	
 	CloseHandle(hRequest);
 }

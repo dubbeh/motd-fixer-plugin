@@ -11,10 +11,10 @@
 
 void MOTDFLogMessage(char[] szInput, any...)
 {
+	char szBuffer[512] = "";
+	
 	if (g_cVarLogging.BoolValue)
 	{
-		char szBuffer[1024] = "";
-		
 		VFormat(szBuffer, sizeof(szBuffer), szInput, 2);
 		LogMessage(szBuffer);
 	}
@@ -38,22 +38,29 @@ void LoadMOTDPanel(int iClient, char[] szTitle, char[] szPage, bool bHidden)
 	CloseHandle(kv);
 }
 
-bool ReadJSONResponse(char[] szResponseData, char[] szResMessage, int iResMessageSize, bool bIsBlocked = false, char[] szServerToken = "", int iServerTokenSize = 0)
+bool ReadJSONResponse(char[] szResponseData, bool bGetServerToken)
 {
 	Handle hJSON = INVALID_HANDLE;
 	bool bSuccess = false;
+	g_bJSONServerIsBlocked = true;
+	g_bJSONIsTokenValid = false;
 	
-	if (SMJANSSON_AVAILABLE()) {
-		if ((hJSON = json_load(szResponseData)) != INVALID_HANDLE) {
-			if (iServerTokenSize > 0) {
-				json_object_get_string(hJSON, "token", szServerToken, 64);
-			}
-			bIsBlocked = json_object_get_bool(hJSON, "is_blocked");
-			json_object_get_string(hJSON, "msg", szResMessage, iResMessageSize);
+	if (SMJANSSON_AVAILABLE())
+	{
+		if ((hJSON = json_load(szResponseData)) != INVALID_HANDLE)
+		{
+			if (bGetServerToken)
+				json_object_get_string(hJSON, "token", g_szServerToken, MAX_TOKEN_SIZE);
+
+			g_bJSONServerIsBlocked = json_object_get_bool(hJSON, "is_blocked");
+			g_bJSONIsTokenValid = json_object_get_bool(hJSON, "is_token_valid");
+			json_object_get_string(hJSON, "msg", g_szJSONResponseMsg, MAX_RESPONSE_MSG_SIZE);
 			bSuccess = json_object_get_bool(hJSON, "success");
+			
 			CloseHandle(hJSON);
 		} else {
 			MOTDFLogMessage("Error parsing JSON Response.");
+			MOTDFLogMessage("Response returned: %s\n", szResponseData);
 		}
 	} else {
 		MOTDFLogMessage("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
@@ -91,6 +98,7 @@ bool GetServerName(char[] szBuffer, int iBufferSize)
 		return true;
 	}
 	
+	MOTDFLogMessage("Error getting server name.");
 	return false;
 }
 
@@ -104,6 +112,7 @@ bool GetServerIP(char[] szBuffer, int iBufferSize)
 		return true;
 	}
 	
+	MOTDFLogMessage("Error getting server IP.");
 	return false;
 }
 
@@ -118,6 +127,7 @@ bool GetServerPort(char[] szBuffer, int iBufferSize)
 		return true;
 	}
 	
+	MOTDFLogMessage("Error getting server port.");
 	return false;
 }
 

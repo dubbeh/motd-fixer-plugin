@@ -17,4 +17,8 @@
 	{
 		"en"		"No need to register under IP based validation"
 	}
+	"Token Invalid"
+	{
+		"en"		"Server token is invalid. Ask an admin to run motdf_register to update - motdf_autoregister is disabled in the config."
+	}
 }

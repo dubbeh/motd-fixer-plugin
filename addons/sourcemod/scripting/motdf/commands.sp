@@ -28,7 +28,6 @@ void RegisterServer(int iClient)
 	{
 		if (STEAMWORKS_AVAILABLE() && SteamWorks_IsLoaded())
 		{
-			
 			Format(szRegisterURL, sizeof(szRegisterURL), "%s/register.php?server=1", g_szBaseURL);
 			
 			if ((hHTTPRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, szRegisterURL)) != INVALID_HANDLE) {
@@ -58,24 +57,26 @@ public void SteamWorks_OnRegisterComplete(Handle hRequest, bool bFailure, bool b
 {
 	char szResponseData[512] = "";
 	int iResponseSize = 0;
-	char szJSONResMsg[512];
-	bool bIsBlocked = false;
 	
 	if (!bFailure && bRequestSuccessful && eStatusCode == k_EHTTPStatusCode200OK)
 	{
 		if (SteamWorks_GetHTTPResponseBodySize(hRequest, iResponseSize) && SteamWorks_GetHTTPResponseBodyData(hRequest, szResponseData, iResponseSize))
 		{
-			if (ReadJSONResponse(szResponseData, szJSONResMsg, sizeof(szJSONResMsg), bIsBlocked, g_szServerToken, sizeof(g_szServerToken)))
+			if (ReadJSONResponse(szResponseData, true))
 			{
-				MOTDFLogMessage(szJSONResMsg);
+				MOTDFLogMessage(g_szJSONResponseMsg);
 				
-				if (g_szServerToken[0]) {
-					g_Config.Save();
+				if (!g_bJSONServerIsBlocked)
+				{
+					if (g_szServerToken[0])
+						g_Config.Save();
+					else
+						MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: No server token recieved from the registration request. Maybe the website is down?");
 				} else {
-					MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: No server token recieved from the registration request. Maybe the website is down?");
+					MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: Server appears to be blocked");
 				}
 			} else {
-				MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: %s - Is Server Blocked: %s", szJSONResMsg, bIsBlocked ? "Yes" : "No");
+				MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error: %s - Is Server Blocked: %s", g_szJSONResponseMsg, g_bJSONServerIsBlocked ? "Yes" : "No");
 			}
 		} else {
 			MOTDFLogMessage("SteamWorks_OnRegisterComplete() Error retrieving registration response data.");

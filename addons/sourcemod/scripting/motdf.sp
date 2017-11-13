@@ -23,10 +23,12 @@
 #define REQUIRE_EXTENSIONS
 #define REQUIRE_PLUGIN
 
-#define PLUGIN_VERSION 		"1.06"
-#define MAX_MOTD_URL_SIZE 	192
-#define VALIDATE_IP			0
-#define VALIDATE_TOKEN		1
+#define PLUGIN_VERSION 			"1.07"
+#define MAX_MOTD_URL_SIZE 		192
+#define VALIDATE_IP				0
+#define VALIDATE_TOKEN			1
+#define MAX_RESPONSE_MSG_SIZE 	128
+#define MAX_TOKEN_SIZE			64
 
 // Thanks to GoD-Tony for this macro
 #define STEAMWORKS_AVAILABLE()	(GetFeatureStatus(FeatureType_Native, "SteamWorks_IsLoaded") == FeatureStatus_Available)
@@ -43,7 +45,7 @@ public Plugin myinfo =
 
 char g_szUpdateURL[] = "https://update.dubbeh.net/motdf/motdf.txt";
 char g_szBaseURL[128] = "https://motd.dubbeh.net";
-char g_szServerToken[64] = "";
+char g_szServerToken[MAX_TOKEN_SIZE + 1] = "";
 char g_szConfigFile[] = "sourcemod/plugin.motdf.cfg";
 
 ConVar g_cVarEnable = null;
@@ -56,6 +58,11 @@ bool g_bUpdaterAvail = false;
 EngineVersion g_EngineVersion = Engine_Unknown;
 bool g_bDisabledHTMLMOTD[MAXPLAYERS + 1];
 
+
+/* JSON Response Data */
+char g_szJSONResponseMsg[MAX_RESPONSE_MSG_SIZE + 1] = "";
+bool g_bJSONServerIsBlocked = false;
+bool g_bJSONIsTokenValid = false;
 
 #include "motdf/config.sp"
 
@@ -97,25 +104,22 @@ public void OnPluginStart()
 
 public void OnAllPluginsLoaded()
 {
-	if (!STEAMWORKS_AVAILABLE()) {
+	if (!STEAMWORKS_AVAILABLE())
 		MOTDFLogMessage("Unable to find SteamWorks. Please install it from https://forums.alliedmods.net/showthread.php?t=229556");
-	} else {
+	else
 		MOTDFLogMessage("Found extension SteamWorks.");
-	}
 
-	if (!SMJANSSON_AVAILABLE()) {
+	if (!SMJANSSON_AVAILABLE())
 		MOTDFLogMessage("Unable to find SMJansson. Please install it from https://forums.alliedmods.net/showthread.php?t=184604");
-	} else {
+	else
 		MOTDFLogMessage("Found extension SMJansson.");
-	}
 
 	g_bUpdaterAvail = LibraryExists("updater");
 	
-	if (!g_bUpdaterAvail) {
+	if (!g_bUpdaterAvail)
 		MOTDFLogMessage("Unable to find Updater. Please install it from https://forums.alliedmods.net/showthread.php?t=169095");
-	} else {
+	else
 		MOTDFLogMessage("Found plugin Updater.");
-	}
 }
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
